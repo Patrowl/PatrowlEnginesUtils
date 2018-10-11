@@ -27,7 +27,7 @@ def _json_serial(obj):
 
 
 class PatrowlEngine:
-    """Class PatrowlEngine."""
+    """Class definition of PatrowlEngine."""
 
     def __init__(self, app, base_dir, name, max_scans=DEFAULT_APP_MAXSCANS):
         """Initialise a new PatrowlEngine."""
@@ -404,7 +404,7 @@ class PatrowlEngine:
 
 
 class PatrowlEngineFinding:
-    """Class PatrowlEngineScan."""
+    """Class definition of PatrowlEngineScan."""
 
     def __init__(self, issue_id, type, title, description, solution, severity,
                  confidence, raw, target_addrs, target_proto="tcp",
@@ -455,7 +455,7 @@ class PatrowlEngineFinding:
 
 
 class PatrowlEngineScan:
-    """Class PatrowlEngineScan."""
+    """Class definition of PatrowlEngineScan."""
 
     def __init__(self, assets, options, scan_id):
         """Initialise a new PatrowlEngineScan."""

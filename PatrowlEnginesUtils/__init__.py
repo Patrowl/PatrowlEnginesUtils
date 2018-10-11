@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""PatrowlEnginesUtils init file."""
+
 
 __title__ = 'patrowl_engine_utils'
 __version__ = '1.0.0'
