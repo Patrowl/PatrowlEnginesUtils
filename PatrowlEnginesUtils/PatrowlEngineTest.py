@@ -119,6 +119,7 @@ class PatrowlEngineTest:
             r = requests.get(
                 url="{}/status/{}".format(self.base_url, TEST_SCAN_ID))
             if r.json()["status"] == "SCANNING":
+                time.sleep(3)
                 continue
             elif r.json()["status"] == "FINISHED":
                 break
@@ -126,7 +127,6 @@ class PatrowlEngineTest:
                 has_error = True
                 assert False
                 break
-            time.sleep(3)
 
         # Get findings
         if not has_error:

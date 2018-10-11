@@ -1,3 +1,8 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""Setup file."""
+
+
 from setuptools import setup, find_packages
 
 setup(
@@ -8,5 +13,5 @@ setup(
     author='Nicolas Mattiocco',
     author_email='nicolas@patrowl.io',
     license='AGPLv3',
-    packages = find_packages(),
+    packages=find_packages(),
 )
