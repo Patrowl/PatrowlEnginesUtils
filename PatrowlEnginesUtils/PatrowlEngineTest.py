@@ -121,11 +121,10 @@ class PatrowlEngineTest:
             if r.json()["status"] == "SCANNING":
                 time.sleep(3)
                 continue
-            elif r.json()["status"] == "FINISHED":
-                break
-            elif r.json()["status"] == "ERROR":
-                has_error = True
-                assert False
+            else:
+                if r.json()["status"] != "FINISHED":
+                    has_error = True
+                    assert False
                 break
 
         # Get findings
