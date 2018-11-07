@@ -9,7 +9,7 @@ import time
 import datetime
 import optparse
 import json
-from flask import jsonify, url_for, redirect, send_from_directory
+from flask import jsonify, url_for, redirect, send_from_directory, abort
 from PatrowlEngineExceptions import PatrowlEngineExceptions
 
 DEFAULT_APP_HOST = "127.0.0.1"
@@ -80,6 +80,17 @@ class PatrowlEngine:
         self.app.run(
             debug=options.debug, host=options.host, port=int(options.port),
             threaded=True)
+
+    def liveness(self):
+        """Return the liveness status."""
+        return 'OK', 200
+
+    def readiness(self):
+        """Return the readiness status."""
+        if len(self.scans) >= self.max_scans or self.status != "READY":
+            abort(500)
+        else:
+            return 'OK', 200
 
     def test(self):
         """Return the test page."""

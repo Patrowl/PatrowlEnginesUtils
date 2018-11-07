@@ -23,10 +23,11 @@ class PatrowlEngineTest:
             r = requests.get(url="{}/".format(self.base_url))
             assert r.status_code == 200
             assert r.json()["page"] == "index"
-
         except AssertionError:
             print(r.json())
             assert False
+        finally:
+            return r.json()
 
     def test_status(self):
         """Test engine status."""
@@ -39,6 +40,8 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json())
             assert False
+        finally:
+            return r.json()
 
     def test_info(self):
         """Test engine info page."""
@@ -51,6 +54,8 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json())
             assert False
+        finally:
+            return r.json()
 
     def test_reloadconfig(self):
         """Test configuration reload."""
@@ -62,6 +67,8 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json())
             assert False
+        finally:
+            return r.json()
 
     def test_stopscans(self):
         """Test to stop all the scans."""
@@ -74,6 +81,8 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json())
             assert False
+        finally:
+            return r.json()
 
     def test_cleanscans(self):
         """Test to clean all the scans."""
@@ -86,6 +95,8 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json())
             assert False
+        finally:
+            return r.json()
 
     def custom_test(self, test_name, assets, scan_policy={}, is_valid=True,
                     max_timeout=1200):
@@ -111,6 +122,8 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json())
             assert False
+        finally:
+            return r.json()
 
         # Wait until scan is finished
         timeout_start = time.time()
@@ -120,19 +133,22 @@ class PatrowlEngineTest:
                 url="{}/status/{}".format(self.base_url, TEST_SCAN_ID))
             if r.json()["status"] == "SCANNING":
                 time.sleep(3)
-                continue
             else:
-                if r.json()["status"] != "FINISHED":
+                if r.json()["status"] == "FINISHED":
+                    assert True
+                else:
                     has_error = True
                     assert False
                 break
 
         # Get findings
         if not has_error:
+            findings = {}
             r = requests.get(
                 url="{}/getfindings/{}".format(self.base_url, TEST_SCAN_ID))
             try:
                 assert r.json()['status'] == "success"
+                findings = r.json()
             except AssertionError:
                 print(r.json())
                 assert False
@@ -147,6 +163,8 @@ class PatrowlEngineTest:
             except AssertionError:
                 print(r.json())
                 assert False
+            finally:
+                return findings
         else:
             assert False
 
