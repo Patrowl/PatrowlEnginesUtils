@@ -9,6 +9,7 @@ import time
 import datetime
 import optparse
 import json
+from uuid import UUID
 from flask import jsonify, url_for, redirect, send_from_directory, abort
 from PatrowlEngineExceptions import PatrowlEngineExceptions
 
@@ -21,8 +22,10 @@ DEFAULT_APP_MAXSCANS = 25
 def _json_serial(obj):
     """JSON serializer for objects not serializable by default json code."""
     if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
-        serial = obj.isoformat()
-        return serial
+        return obj.isoformat()
+    if isinstance(obj, UUID):
+        # if the obj is uuid, we simply return the value of uuid
+        return obj.hex
     raise TypeError("Type not serializable")
 
 
@@ -59,7 +62,7 @@ class PatrowlEngine:
         }
 
     def run_app(self, app_debug=DEFAULT_APP_DEBUG, app_host=DEFAULT_APP_HOST,
-                app_port=DEFAULT_APP_PORT):
+                app_port=DEFAULT_APP_PORT, threaded=True):
         """Run the flask server."""
         if not os.path.exists(self.base_dir+"/results"):
             os.makedirs(self.base_dir+"/results")
@@ -79,7 +82,7 @@ class PatrowlEngine:
         options, _ = parser.parse_args()
         self.app.run(
             debug=options.debug, host=options.host, port=int(options.port),
-            threaded=True)
+            threaded=threaded)
 
     def liveness(self):
         """Return the liveness status."""
@@ -458,7 +461,7 @@ class PatrowlEngineFinding:
                 "tags": self.meta_tags,
                 "links": self.meta_links,
                 "vuln_refs": self.meta_vuln_refs,
-                "meta_risk": self.meta_risk
+                "risk": self.meta_risk
                 },
             "raw": self.raw,
             "timestamp": self.timestamp
