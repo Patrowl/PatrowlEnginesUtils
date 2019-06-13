@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""This file manage PatrowlEngine and its common features."""
+"""This file manages PatrowlEngine and its common features."""
 
 
 import os
@@ -422,7 +422,7 @@ class PatrowlEngineFinding:
 
     def __init__(self, issue_id, type, title, description, solution, severity,
                  confidence, raw, target_addrs, target_proto="tcp",
-                 meta_links=[], meta_tags=[], meta_vuln_refs=[], meta_risk=[],
+                 meta_links=[], meta_tags=[], meta_vuln_refs={}, meta_risk={},
                  timestamp=None):
         """Initialise a new PatrowlEngineFinding."""
         self.issue_id = issue_id
