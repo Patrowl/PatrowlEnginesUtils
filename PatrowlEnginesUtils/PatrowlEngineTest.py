@@ -121,8 +121,6 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json())
             assert False
-        finally:
-            return r.json()
 
         # Wait until scan is finished
         timeout_start = time.time()
