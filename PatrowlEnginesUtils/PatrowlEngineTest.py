@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 """This file manage tests on PatrowlEngine."""
 
@@ -19,8 +18,8 @@ class PatrowlEngineTest:
     def test_connectivity(self):
         """Test engine connectivity."""
         print("test-{}-connectivity".format(self.engine_name))
+        r = requests.get(url="{}/".format(self.base_url))
         try:
-            r = requests.get(url="{}/".format(self.base_url))
             assert r.status_code == 200
             assert r.json()["page"] == "index"
         except AssertionError:

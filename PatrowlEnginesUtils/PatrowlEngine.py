@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 """This file manages PatrowlEngine and its common features."""
 
