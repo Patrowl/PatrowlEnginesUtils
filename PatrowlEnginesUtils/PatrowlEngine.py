@@ -10,7 +10,7 @@ import optparse
 import json
 from uuid import UUID
 from flask import jsonify, url_for, redirect, send_from_directory, abort
-from PatrowlEngineExceptions import PatrowlEngineExceptions
+from .PatrowlEngineExceptions import PatrowlEngineExceptions
 
 DEFAULT_APP_HOST = "127.0.0.1"
 DEFAULT_APP_PORT = 5000
