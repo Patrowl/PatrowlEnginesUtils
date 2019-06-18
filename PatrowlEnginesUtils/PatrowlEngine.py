@@ -140,7 +140,7 @@ class PatrowlEngine:
     def had_options(self, options):
         """Check if the engine is started with options."""
         opts = []
-        if isinstance(options, basestring):
+        if isinstance(options, str):
             opts.append(options)
         elif isinstance(options, list):
             opts = options
@@ -326,6 +326,7 @@ class PatrowlEngine:
             "low": 0,
             "medium": 0,
             "high": 0,
+            "critical": 0,
         }
 
         for issue in self.scans[scan_id]["findings"]:
@@ -338,6 +339,7 @@ class PatrowlEngine:
             "nb_low": nb_vulns["low"],
             "nb_medium": nb_vulns["medium"],
             "nb_high": nb_vulns["high"],
+            "nb_critical": nb_vulns["critical"],
             "engine_name": self.name,
             "engine_version": self.version
         }
@@ -495,7 +497,7 @@ class PatrowlEngineScan:
     def had_options(self, options):
         """Check if the scan is started with options."""
         opts = []
-        if isinstance(options, basestring):
+        if isinstance(options, str):
             opts.append(options)
         elif isinstance(options, list):
             opts = options
