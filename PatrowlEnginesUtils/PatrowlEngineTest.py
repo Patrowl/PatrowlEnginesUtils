@@ -124,11 +124,17 @@ class PatrowlEngineTest:
 
         # Wait until scan is finished
         timeout_start = time.time()
+        # Mitigate PID error
+        retries =0
         has_error = False
         while time.time() < timeout_start + max_timeout:
             r = requests.get(
                 url="{}/status/{}".format(self.base_url, TEST_SCAN_ID))
             if r.json()["status"] in ("SCANNING","STARTED"):
+                time.sleep(3)
+            elif (r.json()["status"] == "ERROR" and "reason" in r.json() and
+                  r.json()["reason"] == "No PID found" and retries < 3):
+                retries+=1
                 time.sleep(3)
             else:
                 if r.json()["status"] == "FINISHED":
