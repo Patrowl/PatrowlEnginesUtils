@@ -128,7 +128,7 @@ class PatrowlEngineTest:
         while time.time() < timeout_start + max_timeout:
             r = requests.get(
                 url="{}/status/{}".format(self.base_url, TEST_SCAN_ID))
-            if r.json()["status"] == "SCANNING":
+            if r.json()["status"] in ("SCANNING","STARTED"):
                 time.sleep(3)
             else:
                 if r.json()["status"] == "FINISHED":
