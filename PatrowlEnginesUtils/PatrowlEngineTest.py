@@ -2,9 +2,9 @@
 """This file manage tests on PatrowlEngine."""
 
 import json
-import requests
 import time
 import random
+import requests
 
 
 class PatrowlEngineTest:
@@ -97,11 +97,13 @@ class PatrowlEngineTest:
         finally:
             return r.json()
 
-    def custom_test(self, test_name, assets, scan_policy={}, is_valid=True,
+    def custom_test(self, test_name, assets, scan_policy=None, is_valid=True,
                     max_timeout=1200):
         """Start a custom test."""
         print("test-{}-custom: {}".format(self.engine_name, test_name))
         TEST_SCAN_ID = random.randint(1000000, 1999999)
+        if(scan_policy == None):
+            scan_policy = {}
         post_data = {
             "assets":  assets,
             "options": scan_policy,
@@ -124,11 +126,17 @@ class PatrowlEngineTest:
 
         # Wait until scan is finished
         timeout_start = time.time()
+        # Mitigate PID error
+        retries = 0
         has_error = False
         while time.time() < timeout_start + max_timeout:
             r = requests.get(
                 url="{}/status/{}".format(self.base_url, TEST_SCAN_ID))
-            if r.json()["status"] == "SCANNING":
+            if r.json()["status"] in ("SCANNING", "STARTED"):
+                time.sleep(3)
+            elif (r.json()["status"] == "ERROR" and "reason" in r.json() and
+                  r.json()["reason"] == "No PID found" and retries < 3):
+                retries += 1
                 time.sleep(3)
             else:
                 if r.json()["status"] == "FINISHED":
