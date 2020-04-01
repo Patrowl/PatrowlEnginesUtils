@@ -3,7 +3,7 @@
 
 
 import os
-import urlparse
+import urllib.parse as urlparse
 # import urllib
 import time
 import datetime
