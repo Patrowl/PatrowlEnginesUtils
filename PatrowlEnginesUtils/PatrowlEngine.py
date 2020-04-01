@@ -3,7 +3,8 @@
 
 
 import os
-import urllib
+import urlparse
+# import urllib
 import time
 import datetime
 import optparse
@@ -104,7 +105,8 @@ class PatrowlEngine:
 
             methods = ','.join(rule.methods)
             url = url_for(rule.endpoint, **options)
-            res += urllib.url2pathname(
+            # res += urllib.url2pathname(
+            res += urlparse.urlsplit(
                 "{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(
                     rule.endpoint, methods, url))
         return res
@@ -419,7 +421,7 @@ class PatrowlEngine:
 
 
 class PatrowlEngineFinding:
-    """Class definition of PatrowlEngineScan."""
+    """Class definition of PatrowlEngineFinding."""
 
     def __init__(self, issue_id, type, title, description, solution, severity,
                  confidence, raw, target_addrs, target_proto="tcp",
