@@ -167,7 +167,7 @@ class PatrowlEngine:
         res.update({"scan_id": scan_id})
 
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002)
+            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
             res.update({
                 "status": "ERROR",
                 "reason": "scan_id '{}' not found".format(scan_id)})
@@ -181,10 +181,7 @@ class PatrowlEngine:
     def getstatus_scan(self, scan_id):
         """Get the status of a scan identified by his 'id'."""
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002)
-            return jsonify({
-                "status": "ERROR",
-                "details": "scan_id '{}' not found".format(scan_id)})
+            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
 
         all_threads_finished = False
         for t in self.scans[scan_id]['threads']:
@@ -230,12 +227,7 @@ class PatrowlEngine:
         res = {"page": "stop"}
 
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002)
-            res.update({
-                "status": "ERROR",
-                "reason": "scan_id '{}' not found".format(scan_id)
-                })
-            return jsonify(res)
+            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
 
         self.getstatus_scan(scan_id)
         if self.scans[scan_id]['status'] not in ["STARTED", "SCANNING"]:
@@ -314,10 +306,7 @@ class PatrowlEngine:
     def _parse_results(self, scan_id):
         """Parse the results."""
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002)
-            return jsonify({
-                "status": "ERROR",
-                "details": "scan_id '{}' not found".format(scan_id)})
+            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
 
         issues = []
         summary = {}
@@ -353,19 +342,15 @@ class PatrowlEngine:
         try:
             scan = self.scans[scan_id]
         except Exception:
-            raise PatrowlEngineExceptions(1002)
+            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
 
         res = {"page": "getfindings", "scan_id": scan_id}
 
         # check if the scan is finished
         self.getstatus_scan(scan_id)
         if scan['status'] != "FINISHED":
-            raise PatrowlEngineExceptions(1003)
-            res.update({
-                "status": "ERROR",
-                "reason": "scan_id '{}' not finished (status={})".format(
-                    scan_id, scan['status'])})
-            return jsonify(res)
+            raise PatrowlEngineExceptions(1003,"scan_id '{}' not finished (status={})".format(
+                    scan_id, scan['status']))
 
         issues, summary = self._parse_results(scan_id)
 
@@ -397,11 +382,7 @@ class PatrowlEngine:
         filepath = "{}/results/{}_{}.json".format(
             self.base_dir, self.name, scan_id)
         if not os.path.exists(filepath):
-            raise PatrowlEngineExceptions(1001)
-            return jsonify({
-                "status": "ERROR",
-                "reason": "Report file for id '{}' not found".format(scan_id)
-            })
+            raise PatrowlEngineExceptions(1001, "Report file for id '{}' not found".format(scan_id))
 
         return send_from_directory(
             self.base_dir+"/results/",
