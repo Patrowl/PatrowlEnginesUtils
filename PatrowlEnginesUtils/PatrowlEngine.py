@@ -168,10 +168,6 @@ class PatrowlEngine:
 
         if scan_id not in self.scans.keys():
             raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
-            res.update({
-                "status": "ERROR",
-                "reason": "scan_id '{}' not found".format(scan_id)})
-            return jsonify(res)
 
         self.scans.pop(scan_id)
         # Todo: force terminating all threads
