@@ -179,20 +179,25 @@ class PatrowlEngine:
         if scan_id not in self.scans.keys():
             raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
 
-        all_threads_finished = False
+        all_threads_finished = True
         for t in self.scans[scan_id]['threads']:
             if t.isAlive():
-                self.scans[scan_id]['status'] = "SCANNING"
                 all_threads_finished = False
                 break
-            else:
-                all_threads_finished = True
+
 
         if all_threads_finished and len(self.scans[scan_id]['threads']) >= 1:
-            self.scans[scan_id]['status'] = "FINISHED"
-            self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+
+            if self.scans[scan_id]['status'] == "SCANNING":
+                # all threads are finished, ensure scan status is no more SCANNING
+                self.scans[scan_id]['status'] = "FINISHED"
+
+            if not 'finished_at' in self.scans[scan_id].keys():
+                # update finished time if not already set
+                self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
         return jsonify({"status": self.scans[scan_id]['status']})
+
 
     def getstatus(self):
         """Get the status of the engine and all its scans."""
