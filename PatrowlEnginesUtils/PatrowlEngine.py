@@ -88,7 +88,18 @@ class PatrowlEngine:
             "", "--password", dest='keypass', default=None,
             help="private key password")
 
+        parser.add_option(
+            "","--auto-tls", dest='tls', action="store_true",
+            help="enable TLS with dummy certificate")
+
         options, _ = parser.parse_args()
+
+        if options.certfile and options.tls:
+            parser.error("options --cert and --auto-tls are mutually exclusive")
+
+        if options.certfile and not options.keyfile:
+            parser.error("option --key missing")
+
         self.app.run(
             debug=options.debug, host=options.host, port=int(options.port),
             threaded=threaded, ssl_context=self._getsslcontext(options))
@@ -140,20 +151,21 @@ class PatrowlEngine:
             return {"status": "ERROR", "reason": "config file not found"}
 
     def _getsslcontext(self, options):
-        import ssl
-
         context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
 
-        # set password to empty string not None to
-        # avoid prompt if private key is protected
-        # this had no effect if private key is not protected
-        if options.keypass is None:
-            options.keypass=""
+        if options.tls:
+            context = 'adhoc'
+        else:
+            # set password to empty string (not None) to
+            # avoid prompt if private key is protected.
+            # this had no effect if private key is not protected
+            if options.keypass is None:
+                options.keypass=""
 
-        context.load_cert_chain(certfile=options.certfile,keyfile=options.keyfile,password=options.keypass)
+            context.load_cert_chain(certfile=options.certfile,keyfile=options.keyfile,password=options.keypass)
 
         return context
-    
+
     def reloadconfig(self):
         """Reload the configuration file."""
         res = {"page": "reloadconfig"}
