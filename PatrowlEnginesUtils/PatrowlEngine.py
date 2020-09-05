@@ -78,11 +78,20 @@ class PatrowlEngine:
         parser.add_option(
             "-d", "--debug", action="store_true", dest="debug",
             help=optparse.SUPPRESS_HELP)
+        parser.add_option(
+            "", "--cert", dest='certfile', default=None,
+            help="certificate filename")
+        parser.add_option(
+            "", "--key", dest='keyfile', default=None,
+            help="private key filename")
+        parser.add_option(
+            "", "--password", dest='keypass', default=None,
+            help="private key password")
 
         options, _ = parser.parse_args()
         self.app.run(
             debug=options.debug, host=options.host, port=int(options.port),
-            threaded=threaded)
+            threaded=threaded, ssl_context=self._getsslcontext(options))
 
     def liveness(self):
         """Return the liveness status."""
@@ -130,6 +139,21 @@ class PatrowlEngine:
             self.status = "ERROR"
             return {"status": "ERROR", "reason": "config file not found"}
 
+    def _getsslcontext(self, options):
+        import ssl
+
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+
+        # set password to empty string not None to
+        # avoid prompt if private key is protected
+        # this had no effect if private key is not protected
+        if options.keypass is None:
+            options.keypass=""
+
+        context.load_cert_chain(certfile=options.certfile,keyfile=options.keyfile,password=options.keypass)
+
+        return context
+    
     def reloadconfig(self):
         """Reload the configuration file."""
         res = {"page": "reloadconfig"}
