@@ -155,14 +155,16 @@ class PatrowlEngine:
 
         if options.tls:
             context = 'adhoc'
-        else:
-            # set password to empty string (not None) to
-            # avoid prompt if private key is protected.
+        elif options.certfile:
+            # set password to empty string not None to
+            # avoid prompt if private key is protected
             # this had no effect if private key is not protected
             if options.keypass is None:
                 options.keypass=""
 
             context.load_cert_chain(certfile=options.certfile,keyfile=options.keyfile,password=options.keypass)
+        else:
+            context = None
 
         return context
 
