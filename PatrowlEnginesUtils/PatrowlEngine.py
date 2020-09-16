@@ -9,6 +9,7 @@ import time
 import datetime
 import optparse
 import json
+import ssl
 from uuid import UUID
 from flask import jsonify, url_for, redirect, send_from_directory, abort
 from .PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -80,17 +81,16 @@ class PatrowlEngine:
             help=optparse.SUPPRESS_HELP)
         parser.add_option(
             "", "--cert", dest='certfile', default=None,
-            help="certificate filename")
+            help="Certificate filename")
         parser.add_option(
             "", "--key", dest='keyfile', default=None,
-            help="private key filename")
+            help="Private key filename")
         parser.add_option(
             "", "--password", dest='keypass', default=None,
-            help="private key password")
-
+            help="Private key password")
         parser.add_option(
-            "","--auto-tls", dest='tls', action="store_true",
-            help="enable TLS with dummy certificate")
+            "", "--auto-tls", dest='tls', action="store_true",
+            help="Enable TLS with dummy certificate")
 
         options, _ = parser.parse_args()
 
@@ -151,7 +151,7 @@ class PatrowlEngine:
             return {"status": "ERROR", "reason": "config file not found"}
 
     def _getsslcontext(self, options):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
         if options.tls:
             context = 'adhoc'
@@ -160,9 +160,9 @@ class PatrowlEngine:
             # avoid prompt if private key is protected
             # this had no effect if private key is not protected
             if options.keypass is None:
-                options.keypass=""
+                options.keypass = ""
 
-            context.load_cert_chain(certfile=options.certfile,keyfile=options.keyfile,password=options.keypass)
+            context.load_cert_chain(certfile=options.certfile, keyfile=options.keyfile, password=options.keypass)
         else:
             context = None
 
@@ -215,7 +215,7 @@ class PatrowlEngine:
     def getstatus_scan(self, scan_id):
         """Get the status of a scan identified by his 'id'."""
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
 
         all_threads_finished = True
         for t in self.scans[scan_id]['threads']:
@@ -223,19 +223,17 @@ class PatrowlEngine:
                 all_threads_finished = False
                 break
 
-
         if all_threads_finished and len(self.scans[scan_id]['threads']) >= 1:
 
             if self.scans[scan_id]['status'] == "SCANNING":
                 # all threads are finished, ensure scan status is no more SCANNING
                 self.scans[scan_id]['status'] = "FINISHED"
 
-            if not 'finished_at' in self.scans[scan_id].keys():
+            if 'finished_at' not in self.scans[scan_id].keys():
                 # update finished time if not already set
                 self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
         return jsonify({"status": self.scans[scan_id]['status']})
-
 
     def getstatus(self):
         """Get the status of the engine and all its scans."""
@@ -266,7 +264,7 @@ class PatrowlEngine:
         res = {"page": "stop"}
 
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
 
         self.getstatus_scan(scan_id)
         if self.scans[scan_id]['status'] not in ["STARTED", "SCANNING"]:
@@ -345,7 +343,7 @@ class PatrowlEngine:
     def _parse_results(self, scan_id):
         """Parse the results."""
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
 
         issues = []
         summary = {}
@@ -381,14 +379,14 @@ class PatrowlEngine:
         try:
             scan = self.scans[scan_id]
         except Exception:
-            raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
 
         res = {"page": "getfindings", "scan_id": scan_id}
 
         # check if the scan is finished
         self.getstatus_scan(scan_id)
         if scan['status'] != "FINISHED":
-            raise PatrowlEngineExceptions(1003,"scan_id '{}' not finished (status={})".format(
+            raise PatrowlEngineExceptions(1003, "scan_id '{}' not finished (status={})".format(
                     scan_id, scan['status']))
 
         issues, summary = self._parse_results(scan_id)
