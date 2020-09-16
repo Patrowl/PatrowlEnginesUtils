@@ -78,11 +78,31 @@ class PatrowlEngine:
         parser.add_option(
             "-d", "--debug", action="store_true", dest="debug",
             help=optparse.SUPPRESS_HELP)
+        parser.add_option(
+            "", "--cert", dest='certfile', default=None,
+            help="certificate filename")
+        parser.add_option(
+            "", "--key", dest='keyfile', default=None,
+            help="private key filename")
+        parser.add_option(
+            "", "--password", dest='keypass', default=None,
+            help="private key password")
+
+        parser.add_option(
+            "","--auto-tls", dest='tls', action="store_true",
+            help="enable TLS with dummy certificate")
 
         options, _ = parser.parse_args()
+
+        if options.certfile and options.tls:
+            parser.error("options --cert and --auto-tls are mutually exclusive")
+
+        if options.certfile and not options.keyfile:
+            parser.error("option --key missing")
+
         self.app.run(
             debug=options.debug, host=options.host, port=int(options.port),
-            threaded=threaded)
+            threaded=threaded, ssl_context=self._getsslcontext(options))
 
     def liveness(self):
         """Return the liveness status."""
@@ -129,6 +149,24 @@ class PatrowlEngine:
         else:
             self.status = "ERROR"
             return {"status": "ERROR", "reason": "config file not found"}
+
+    def _getsslcontext(self, options):
+        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+
+        if options.tls:
+            context = 'adhoc'
+        elif options.certfile:
+            # set password to empty string not None to
+            # avoid prompt if private key is protected
+            # this had no effect if private key is not protected
+            if options.keypass is None:
+                options.keypass=""
+
+            context.load_cert_chain(certfile=options.certfile,keyfile=options.keyfile,password=options.keypass)
+        else:
+            context = None
+
+        return context
 
     def reloadconfig(self):
         """Reload the configuration file."""
@@ -179,20 +217,25 @@ class PatrowlEngine:
         if scan_id not in self.scans.keys():
             raise PatrowlEngineExceptions(1002,"scan_id '{}' not found".format(scan_id))
 
-        all_threads_finished = False
+        all_threads_finished = True
         for t in self.scans[scan_id]['threads']:
             if t.isAlive():
-                self.scans[scan_id]['status'] = "SCANNING"
                 all_threads_finished = False
                 break
-            else:
-                all_threads_finished = True
+
 
         if all_threads_finished and len(self.scans[scan_id]['threads']) >= 1:
-            self.scans[scan_id]['status'] = "FINISHED"
-            self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+
+            if self.scans[scan_id]['status'] == "SCANNING":
+                # all threads are finished, ensure scan status is no more SCANNING
+                self.scans[scan_id]['status'] = "FINISHED"
+
+            if not 'finished_at' in self.scans[scan_id].keys():
+                # update finished time if not already set
+                self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
         return jsonify({"status": self.scans[scan_id]['status']})
+
 
     def getstatus(self):
         """Get the status of the engine and all its scans."""
