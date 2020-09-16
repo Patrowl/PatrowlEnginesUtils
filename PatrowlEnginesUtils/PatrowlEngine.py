@@ -125,7 +125,6 @@ class PatrowlEngine:
 
             methods = ','.join(rule.methods)
             url = url_for(rule.endpoint, **options)
-            # res += urllib.url2pathname(
             res += urlparse.urlsplit(
                 "{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(
                     rule.endpoint, methods, url))
@@ -162,7 +161,11 @@ class PatrowlEngine:
             if options.keypass is None:
                 options.keypass = ""
 
-            context.load_cert_chain(certfile=options.certfile, keyfile=options.keyfile, password=options.keypass)
+            context.load_cert_chain(
+                certfile=options.certfile,
+                keyfile=options.keyfile,
+                password=options.keypass
+            )
         else:
             context = None
 
