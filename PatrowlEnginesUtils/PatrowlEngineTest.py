@@ -98,16 +98,15 @@ class PatrowlEngineTest:
             return r.json()
 
     def custom_test(self, test_name, assets, scan_policy=None, is_valid=True,
-                    max_timeout=1200):
+                    max_timeout=1200, scan_id=random.randint(1000000, 1999999)):
         """Start a custom test."""
         print("test-{}-custom: {}".format(self.engine_name, test_name))
-        TEST_SCAN_ID = random.randint(1000000, 1999999)
-        if(scan_policy == None):
+        if scan_policy is None:
             scan_policy = {}
         post_data = {
             "assets":  assets,
             "options": scan_policy,
-            "scan_id": str(TEST_SCAN_ID)
+            "scan_id": str(scan_id)
         }
 
         r = requests.post(
@@ -131,7 +130,7 @@ class PatrowlEngineTest:
         has_error = False
         while time.time() < timeout_start + max_timeout:
             r = requests.get(
-                url="{}/status/{}".format(self.base_url, TEST_SCAN_ID))
+                url="{}/status/{}".format(self.base_url, scan_id))
             if r.json()["status"] in ("SCANNING", "STARTED"):
                 time.sleep(3)
             elif (r.json()["status"] == "ERROR" and "reason" in r.json() and
@@ -150,7 +149,7 @@ class PatrowlEngineTest:
         if not has_error:
             findings = {}
             r = requests.get(
-                url="{}/getfindings/{}".format(self.base_url, TEST_SCAN_ID))
+                url="{}/getfindings/{}".format(self.base_url, scan_id))
             try:
                 assert r.json()['status'] == "success"
                 findings = r.json()
@@ -160,7 +159,7 @@ class PatrowlEngineTest:
 
             # Get report
             r = requests.get(
-                url="{}/getreport/{}".format(self.base_url, TEST_SCAN_ID))
+                url="{}/getreport/{}".format(self.base_url, scan_id))
             try:
                 # check the file name & siza !!
                 assert True

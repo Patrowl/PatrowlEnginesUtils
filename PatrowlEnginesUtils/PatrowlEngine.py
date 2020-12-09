@@ -279,7 +279,9 @@ class PatrowlEngine:
             return jsonify(res)
 
         for t in self.scans[scan_id]['threads']:
-            t._Thread__stop()
+            t.join()
+            self.scans[scan_id]['threads'].remove(t)
+            # t._Thread__stop()
         self.scans[scan_id]['status'] = "STOPPED"
         self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
@@ -351,7 +353,6 @@ class PatrowlEngine:
         issues = []
         summary = {}
 
-        # scan = self.scans[scan_id]
         nb_vulns = {
             "info": 0,
             "low": 0,
@@ -480,13 +481,13 @@ class PatrowlEngineFinding:
             "target": {
                 "addr": self.target_addrs,
                 "protocol": self.target_proto
-                },
+            },
             "metadata": {
                 "tags": self.meta_tags,
                 "links": self.meta_links,
                 "vuln_refs": self.meta_vuln_refs,
                 "risk": self.meta_risk
-                },
+            },
             "raw": self.raw,
             "timestamp": self.timestamp
         }
