@@ -33,12 +33,12 @@ def _json_serial(obj):
 class PatrowlEngine:
     """Class definition of PatrowlEngine."""
 
-    def __init__(self, app, base_dir, name, max_scans=DEFAULT_APP_MAXSCANS):
+    def __init__(self, app, base_dir, name, max_scans=DEFAULT_APP_MAXSCANS, version=0):
         """Initialise a new PatrowlEngine."""
         self.app = app
         self.base_dir = str(base_dir)
         self.name = name
-        self.version = 0
+        self.version = version
         self.description = ""
         self.allowed_asset_types = []
         self.options = {}
