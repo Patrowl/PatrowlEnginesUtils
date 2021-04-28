@@ -222,7 +222,7 @@ class PatrowlEngine:
 
         all_threads_finished = True
         for t in self.scans[scan_id]['threads']:
-            if t.isAlive():
+            if t.is_alive():
                 all_threads_finished = False
                 break
 
