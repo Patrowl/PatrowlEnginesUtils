@@ -4,6 +4,7 @@
 
 import os
 import urllib.parse as urlparse
+
 # import urllib
 import time
 import datetime
@@ -62,35 +63,54 @@ class PatrowlEngine:
             "nb_scans": len(self.scans.keys()),
         }
 
-    def run_app(self, app_debug=DEFAULT_APP_DEBUG, app_host=DEFAULT_APP_HOST,
-                app_port=DEFAULT_APP_PORT, threaded=True):
+    def run_app(
+        self,
+        app_debug=DEFAULT_APP_DEBUG,
+        app_host=DEFAULT_APP_HOST,
+        app_port=DEFAULT_APP_PORT,
+        threaded=True,
+    ):
         """Run the flask server."""
-        if not os.path.exists(self.base_dir+"/results"):
-            os.makedirs(self.base_dir+"/results")
+        if not os.path.exists(self.base_dir + "/results"):
+            os.makedirs(self.base_dir + "/results")
 
         self._loadconfig()
         parser = optparse.OptionParser()
         parser.add_option(
-            "-H", "--host", default=app_host,
-            help="PatrowlEngine hostname [default %s]" % DEFAULT_APP_HOST)
+            "-H",
+            "--host",
+            default=app_host,
+            help="PatrowlEngine hostname [default %s]" % DEFAULT_APP_HOST,
+        )
         parser.add_option(
-            "-P", "--port", default=app_port,
-            help="Port for the Patrowl Engine [default %s]" % DEFAULT_APP_PORT)
+            "-P",
+            "--port",
+            default=app_port,
+            help="Port for the Patrowl Engine [default %s]" % DEFAULT_APP_PORT,
+        )
         parser.add_option(
-            "-d", "--debug", action="store_true", dest="debug",
-            help=optparse.SUPPRESS_HELP)
+            "-d",
+            "--debug",
+            action="store_true",
+            dest="debug",
+            help=optparse.SUPPRESS_HELP,
+        )
         parser.add_option(
-            "", "--cert", dest='certfile', default=None,
-            help="Certificate filename")
+            "", "--cert", dest="certfile", default=None, help="Certificate filename"
+        )
         parser.add_option(
-            "", "--key", dest='keyfile', default=None,
-            help="Private key filename")
+            "", "--key", dest="keyfile", default=None, help="Private key filename"
+        )
         parser.add_option(
-            "", "--password", dest='keypass', default=None,
-            help="Private key password")
+            "", "--password", dest="keypass", default=None, help="Private key password"
+        )
         parser.add_option(
-            "", "--auto-tls", dest='tls', action="store_true",
-            help="Enable TLS with dummy certificate")
+            "",
+            "--auto-tls",
+            dest="tls",
+            action="store_true",
+            help="Enable TLS with dummy certificate",
+        )
 
         options, _ = parser.parse_args()
 
@@ -101,19 +121,23 @@ class PatrowlEngine:
             parser.error("option --key missing")
 
         self.app.run(
-            debug=options.debug, host=options.host, port=int(options.port),
-            threaded=threaded, ssl_context=self._getsslcontext(options))
+            debug=options.debug,
+            host=options.host,
+            port=int(options.port),
+            threaded=threaded,
+            ssl_context=self._getsslcontext(options),
+        )
 
     def liveness(self):
         """Return the liveness status."""
-        return 'OK', 200
+        return "OK", 200
 
     def readiness(self):
         """Return the readiness status."""
         if len(self.scans) >= self.max_scans or self.status != "READY":
             abort(500)
         else:
-            return 'OK', 200
+            return "OK", 200
 
     def test(self):
         """Return the test page."""
@@ -123,11 +147,13 @@ class PatrowlEngine:
             for arg in rule.arguments:
                 options[arg] = "[{0}]".format(arg)
 
-            methods = ','.join(rule.methods)
+            methods = ",".join(rule.methods)
             url = url_for(rule.endpoint, **options)
             res += urlparse.urlsplit(
                 "{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(
-                    rule.endpoint, methods, url))
+                    rule.endpoint, methods, url
+                )
+            )
         return res
 
     def info(self):
@@ -137,7 +163,7 @@ class PatrowlEngine:
 
     def _loadconfig(self):
         """Load the configuration file."""
-        conf_file = self.base_dir+'/'+self.name+'.json'
+        conf_file = self.base_dir + "/" + self.name + ".json"
         if os.path.exists(conf_file):
             engine_config = json.load(open(conf_file))
             self.version = engine_config["version"]
@@ -153,7 +179,7 @@ class PatrowlEngine:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
         if options.tls:
-            context = 'adhoc'
+            context = "adhoc"
         elif options.certfile:
             # set password to empty string not None to
             # avoid prompt if private key is protected
@@ -164,7 +190,7 @@ class PatrowlEngine:
             context.load_cert_chain(
                 certfile=options.certfile,
                 keyfile=options.keyfile,
-                password=options.keypass
+                password=options.keypass,
             )
         else:
             context = None
@@ -175,9 +201,7 @@ class PatrowlEngine:
         """Reload the configuration file."""
         res = {"page": "reloadconfig"}
         self._loadconfig()
-        res.update({"config": {
-            "status": self.status
-        }})
+        res.update({"config": {"status": self.status}})
         return jsonify(res)
 
     def had_options(self, options):
@@ -208,7 +232,9 @@ class PatrowlEngine:
         res.update({"scan_id": scan_id})
 
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(
+                1002, "scan_id '{}' not found".format(scan_id)
+            )
 
         self.scans.pop(scan_id)
         # Todo: force terminating all threads
@@ -218,25 +244,27 @@ class PatrowlEngine:
     def getstatus_scan(self, scan_id):
         """Get the status of a scan identified by his 'id'."""
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(
+                1002, "scan_id '{}' not found".format(scan_id)
+            )
 
         all_threads_finished = True
-        for t in self.scans[scan_id]['threads']:
+        for t in self.scans[scan_id]["threads"]:
             if t.is_alive():
                 all_threads_finished = False
                 break
 
-        if all_threads_finished and len(self.scans[scan_id]['threads']) >= 1:
+        if all_threads_finished and len(self.scans[scan_id]["threads"]) >= 1:
 
-            if self.scans[scan_id]['status'] == "SCANNING":
+            if self.scans[scan_id]["status"] == "SCANNING":
                 # all threads are finished, ensure scan status is no more SCANNING
-                self.scans[scan_id]['status'] = "FINISHED"
+                self.scans[scan_id]["status"] = "FINISHED"
 
-            if 'finished_at' not in self.scans[scan_id].keys():
+            if "finished_at" not in self.scans[scan_id].keys():
                 # update finished time if not already set
-                self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+                self.scans[scan_id]["finished_at"] = int(time.time() * 1000)
 
-        return jsonify({"status": self.scans[scan_id]['status']})
+        return jsonify({"status": self.scans[scan_id]["status"]})
 
     def getstatus(self):
         """Get the status of the engine and all its scans."""
@@ -250,16 +278,17 @@ class PatrowlEngine:
         scans = []
         for scan_id in self.scans.keys():
             self.getstatus_scan(scan_id)
-            scans.append({scan_id: {
-                "status": self.scans[scan_id]['status'],
-                "started_at": self.scans[scan_id]['started_at'],
-                "assets": self.scans[scan_id]['assets']
-            }})
+            scans.append(
+                {
+                    scan_id: {
+                        "status": self.scans[scan_id]["status"],
+                        "started_at": self.scans[scan_id]["started_at"],
+                        "assets": self.scans[scan_id]["assets"],
+                    }
+                }
+            )
 
-        res.update({
-            "nb_scans": len(self.scans),
-            "status": self.status,
-            "scans": scans})
+        res.update({"nb_scans": len(self.scans), "status": self.status, "scans": scans})
         return jsonify(res)
 
     def stop_scan(self, scan_id):
@@ -267,23 +296,28 @@ class PatrowlEngine:
         res = {"page": "stop"}
 
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(
+                1002, "scan_id '{}' not found".format(scan_id)
+            )
 
         self.getstatus_scan(scan_id)
-        if self.scans[scan_id]['status'] not in ["STARTED", "SCANNING"]:
-            res.update({
-                "status": "ERROR",
-                "reason": "scan '{}' is not running (status={})".format(
-                    scan_id, self.scans[scan_id]['status'])
-                })
+        if self.scans[scan_id]["status"] not in ["STARTED", "SCANNING"]:
+            res.update(
+                {
+                    "status": "ERROR",
+                    "reason": "scan '{}' is not running (status={})".format(
+                        scan_id, self.scans[scan_id]["status"]
+                    ),
+                }
+            )
             return jsonify(res)
 
-        for t in self.scans[scan_id]['threads']:
+        for t in self.scans[scan_id]["threads"]:
             t.join()
-            self.scans[scan_id]['threads'].remove(t)
+            self.scans[scan_id]["threads"].remove(t)
             # t._Thread__stop()
-        self.scans[scan_id]['status'] = "STOPPED"
-        self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+        self.scans[scan_id]["status"] = "STOPPED"
+        self.scans[scan_id]["finished_at"] = int(time.time() * 1000)
 
         res.update({"status": "SUCCESS"})
         return jsonify(res)
@@ -303,43 +337,44 @@ class PatrowlEngine:
 
         # check the scanner is ready to start a new scan
         if len(self.scans) == self.max_scans:
-            res.update({
-                "status": "ERROR",
-                "reason": "Scan refused: max concurrent active scans reached \
-                    ({})".format(self.max_scans)
-            })
+            res.update(
+                {
+                    "status": "ERROR",
+                    "reason": "Scan refused: max concurrent active scans reached \
+                    ({})".format(
+                        self.max_scans
+                    ),
+                }
+            )
             return res
 
         self.getstatus()
         if self.status != "READY":
-            res.update({
-                "status": "ERROR",
-                "details": {
-                    "reason": "scanner not ready",
-                    "status": self.status
-                    }
+            res.update(
+                {
+                    "status": "ERROR",
+                    "details": {"reason": "scanner not ready", "status": self.status},
                 }
             )
             return res
 
         data = json.loads(params)
-        if 'assets' not in data.keys():
-            res.update({
-                "status": "ERROR",
-                "details": {
-                    "reason": "Arg error, something is missing ('assets' ?)"
-                    }
+        if "assets" not in data.keys():
+            res.update(
+                {
+                    "status": "ERROR",
+                    "details": {
+                        "reason": "Arg error, something is missing ('assets' ?)"
+                    },
                 }
             )
             return res
 
         # Sanitize args :
-        scan_id = str(data['scan_id'])
+        scan_id = str(data["scan_id"])
         res.update({"details": {"scan_id": scan_id}})
         new_scan = PatrowlEngineScan(
-            assets=data['assets'],
-            options=data['options'],
-            scan_id=scan_id
+            assets=data["assets"], options=data["options"], scan_id=scan_id
         )
 
         self.scans.update({scan_id: new_scan.__dict__})
@@ -348,7 +383,9 @@ class PatrowlEngine:
     def _parse_results(self, scan_id):
         """Parse the results."""
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(
+                1002, "scan_id '{}' not found".format(scan_id)
+            )
 
         issues = []
         summary = {}
@@ -373,7 +410,7 @@ class PatrowlEngine:
             "nb_high": nb_vulns["high"],
             "nb_critical": nb_vulns["critical"],
             "engine_name": self.name,
-            "engine_version": self.version
+            "engine_version": self.version,
         }
 
         return issues, summary
@@ -383,51 +420,52 @@ class PatrowlEngine:
         try:
             scan = self.scans[scan_id]
         except Exception:
-            raise PatrowlEngineExceptions(1002, "scan_id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(
+                1002, "scan_id '{}' not found".format(scan_id)
+            )
 
         res = {"page": "getfindings", "scan_id": scan_id}
 
         # check if the scan is finished
         self.getstatus_scan(scan_id)
-        if scan['status'] != "FINISHED":
-            raise PatrowlEngineExceptions(1003, "scan_id '{}' not finished (status={})".format(
-                    scan_id, scan['status']))
+        if scan["status"] != "FINISHED":
+            raise PatrowlEngineExceptions(
+                1003,
+                "scan_id '{}' not finished (status={})".format(scan_id, scan["status"]),
+            )
 
         issues, summary = self._parse_results(scan_id)
 
         # Store the findings in a file
         report_filename = "{}/results/{}_{}.json".format(
-            self.base_dir, self.name, scan_id)
-        with open(report_filename, 'w') as report_file:
-            json.dump({
-                "scan": {
-                    "scan_id": scan_id
-                },
-                "summary": summary,
-                "issues": issues
-            }, report_file, default=_json_serial)
+            self.base_dir, self.name, scan_id
+        )
+        with open(report_filename, "w") as report_file:
+            json.dump(
+                {"scan": {"scan_id": scan_id}, "summary": summary, "issues": issues},
+                report_file,
+                default=_json_serial,
+            )
 
         # remove the scan from the active scan list
         self.clean_scan(scan_id)
 
-        res.update({
-            "scan": scan_id,
-            "summary": summary,
-            "issues": issues,
-            "status": "success"
-        })
+        res.update(
+            {"scan": scan_id, "summary": summary, "issues": issues, "status": "success"}
+        )
         return jsonify(res)
 
     def getreport(self, scan_id):
         """Return the report of a scan identified by it 'id'."""
-        filepath = "{}/results/{}_{}.json".format(
-            self.base_dir, self.name, scan_id)
+        filepath = "{}/results/{}_{}.json".format(self.base_dir, self.name, scan_id)
         if not os.path.exists(filepath):
-            raise PatrowlEngineExceptions(1001, "Report file for id '{}' not found".format(scan_id))
+            raise PatrowlEngineExceptions(
+                1001, "Report file for id '{}' not found".format(scan_id)
+            )
 
         return send_from_directory(
-            self.base_dir+"/results/",
-            "{}_{}.json".format(self.name, scan_id))
+            self.base_dir + "/results/", "{}_{}.json".format(self.name, scan_id)
+        )
 
     def page_not_found(self):
         """Return the default page."""
@@ -435,7 +473,7 @@ class PatrowlEngine:
 
     def default(self):
         """Return the default page."""
-        return redirect(url_for('index'))
+        return redirect(url_for("index"))
 
     def index(self):
         """Return the index page."""
@@ -445,10 +483,24 @@ class PatrowlEngine:
 class PatrowlEngineFinding:
     """Class definition of PatrowlEngineFinding."""
 
-    def __init__(self, issue_id, type, title, description, solution, severity,
-                 confidence, raw, target_addrs, target_proto="tcp",
-                 meta_links=[], meta_tags=[], meta_vuln_refs={}, meta_risk={},
-                 timestamp=None):
+    def __init__(
+        self,
+        issue_id,
+        type,
+        title,
+        description,
+        solution,
+        severity,
+        confidence,
+        raw,
+        target_addrs,
+        target_proto="tcp",
+        meta_links=[],
+        meta_tags=[],
+        meta_vuln_refs={},
+        meta_risk={},
+        timestamp=None,
+    ):
         """Initialise a new PatrowlEngineFinding."""
         self.issue_id = issue_id
         self.type = type
@@ -478,18 +530,15 @@ class PatrowlEngineFinding:
             "solution": self.solution,
             "severity": self.severity,
             "confidence": self.confidence,
-            "target": {
-                "addr": self.target_addrs,
-                "protocol": self.target_proto
-            },
+            "target": {"addr": self.target_addrs, "protocol": self.target_proto},
             "metadata": {
                 "tags": self.meta_tags,
                 "links": self.meta_links,
                 "vuln_refs": self.meta_vuln_refs,
-                "risk": self.meta_risk
+                "risk": self.meta_risk,
             },
             "raw": self.raw,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
 
 
@@ -511,7 +560,7 @@ class PatrowlEngineScan:
             "assets": self.assets,
             "options": self.options,
             "scan_id": self.scan_id,
-            "status": self.status
+            "status": self.status,
         }
 
     def add_issue(self, issue):
