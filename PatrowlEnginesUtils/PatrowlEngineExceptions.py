@@ -11,10 +11,10 @@ class PatrowlEngineExceptions(Exception):
     """
 
     _error_codes = {
-        1000: 'Configuration file not found.',
-        1001: 'Report file not found.',
-        1002: 'Scan_id not found in current scans.',
-        1003: 'Scan not finished.',
+        1000: "Configuration file not found.",
+        1001: "Report file not found.",
+        1002: "Scan_id not found in current scans.",
+        1003: "Scan not finished.",
     }
 
     def __init__(self, code, msg=None):
@@ -32,8 +32,4 @@ class PatrowlEngineExceptions(Exception):
 
     def to_dict(self):
         """Return a dict-formated object."""
-        return {
-            "code": self.code,
-            "message": self.message,
-            "status": "ERROR"
-        }
+        return {"code": self.code, "message": self.message, "status": "ERROR"}
