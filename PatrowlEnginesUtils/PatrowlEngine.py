@@ -5,13 +5,13 @@
 import os
 
 import datetime
-from flask import jsonify, url_for, redirect, send_from_directory, abort
+from flask import jsonify, url_for, redirect, send_file, abort
 import json
 import optparse
 import psutil
+import urllib
 import ssl
 import time
-import urllib.parse as urlparse
 from uuid import UUID
 from .PatrowlEngineExceptions import PatrowlEngineExceptions
 
@@ -43,6 +43,8 @@ class PatrowlEngine:
         self.description = ""
         self.allowed_asset_types = []
         self.options = {}
+        self.scan_id = 1
+        self.scanner = {}
         self.scans = {}
         self.max_scans = max_scans
         self.status = "INIT"
@@ -149,7 +151,7 @@ class PatrowlEngine:
 
             methods = ",".join(rule.methods)
             url = url_for(rule.endpoint, **options)
-            res += urlparse.urlsplit(
+            res += urllib.request.pathname2url(
                 "{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(
                     rule.endpoint, methods, url
                 )
@@ -174,7 +176,7 @@ class PatrowlEngine:
         """Reload the configuration file."""
         res = {"page": "reloadconfig"}
         self._loadconfig()
-        res.update({"config": {"status": self.status}})
+        res.update({"status": "success", "config": self.scanner})
         return jsonify(res)
 
     def had_options(self, options):
@@ -213,7 +215,7 @@ class PatrowlEngine:
 
         return context
 
-    def clean(self):
+    def clean(self, scan_id):
         """Clean all the scans."""
         res = {"page": "clean"}
         # Terminate processes
@@ -225,7 +227,7 @@ class PatrowlEngine:
         # Remove scans from memory
         self.scans.clear()
         # Update scanner status
-        self.status()
+        self.get_status()
         res.update({"status": "success"})
         return jsonify(res), 200
 
@@ -282,7 +284,7 @@ class PatrowlEngine:
 
         return jsonify({"status": self.scans[scan_id]["status"]})
 
-    def status(self):
+    def get_status(self):
         """Get the status of the engine and all its scans."""
         res = {"page": "status"}
         self.scanner["status"] = "READY"
@@ -462,7 +464,7 @@ class PatrowlEngine:
             )
             return res
 
-        self.status()
+        self.get_status()
         if self.status != "READY":
             res.update(
                 {
@@ -569,16 +571,25 @@ class PatrowlEngine:
         )
         return jsonify(res)
 
-    def getreport(self, scan_id):
-        """Return the report of a scan identified by it 'id'."""
-        filepath = "{}/results/{}_{}.json".format(self.base_dir, self.name, scan_id)
+    def getreport(self, scan_id: int):
+        """Return the report of a scan identified by it 'id'.
+        :scan_id: Scan ID"""
+        res = {"page": "getreport", "scan_id": scan_id}
+        message = ""
+        if scan_id not in self.scans.keys():
+            message = f" (scan not found)"
+
+        filepath = "{self.base_dir}/results/{self.name}-{scan_id}.json"
         if not os.path.exists(filepath):
             raise PatrowlEngineExceptions(
-                1001, "Report file for id '{}' not found".format(scan_id)
+                1001, f"Report file for id '{scan_id}' not found" + message
             )
 
-        return send_from_directory(
-            self.base_dir + "/results/", "{}_{}.json".format(self.name, scan_id)
+        return send_file(
+            filepath,
+            mimetype="application/json",
+            attachment_filename=f"{self.name}-{scan_id}.json",
+            as_attachment=True,
         )
 
     def page_not_found(self):
