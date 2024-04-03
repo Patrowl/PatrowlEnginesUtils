@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """This file manages PatrowlEngine and its common features."""
 
-
 import os
 
 import datetime
-from flask import jsonify, url_for, redirect, send_file, abort
+from flask import jsonify, url_for, redirect, send_file
 import json
 import optparse
 import psutil
@@ -160,7 +159,7 @@ class PatrowlEngine:
         return res
 
     def _loadconfig(self):
-        """Load the configuration file."""
+        """Load the configuration file"""
         conf_file = self.base_dir + "/" + self.name + ".json"
         if os.path.exists(conf_file):
             engine_config = json.load(open(conf_file))
@@ -274,7 +273,6 @@ class PatrowlEngine:
                 break
 
         if all_threads_finished and len(self.scans[scan_id]["threads"]) >= 1:
-
             if self.scans[scan_id]["status"] == "SCANNING":
                 # all threads are finished, ensure scan status is no more SCANNING
                 self.scans[scan_id]["status"] = "FINISHED"
@@ -474,9 +472,7 @@ class PatrowlEngine:
                 {
                     "status": "ERROR",
                     "reason": "Scan refused: max concurrent active scans reached \
-                    ({})".format(
-                        self.max_scans
-                    ),
+                    ({})".format(self.max_scans),
                 }
             )
             return res
@@ -589,10 +585,10 @@ class PatrowlEngine:
     def getreport(self, scan_id: int):
         """Return the report of a scan identified by it 'id'.
         :scan_id: Scan ID"""
-        res = {"page": "getreport", "scan_id": scan_id}
+        # res = {"page": "getreport", "scan_id": scan_id}
         message = ""
         if scan_id not in self.scans.keys():
-            message = f" (scan not found)"
+            message = f"{scan_id} (scan not found)"
 
         # remove the scan from the active scan list
         self.clean_scan(scan_id)
