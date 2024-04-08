@@ -136,7 +136,7 @@ class PatrowlEngine:
 
     def readiness(self):
         """Return the readiness status."""
-        if self.status not in ["READY", "BUSY"]:
+        if self.scanner["status"] not in ["READY", "BUSY"]:
             return jsonify({"page": "readiness", "status": "error"}), 500
         else:
             return jsonify({"page": "readiness", "status": "success"}), 200
@@ -167,9 +167,9 @@ class PatrowlEngine:
             self.description = engine_config["description"]
             self.options = engine_config["options"]
             self.allowed_asset_types = engine_config["allowed_asset_types"]
-            self.status = "READY"
+            self.scanner["status"] = "READY"
         else:
-            self.status = "ERROR"
+            self.scanner["status"] = "ERROR"
             return {"status": "ERROR", "reason": "config file not found"}
 
     def reloadconfig(self):
@@ -220,10 +220,11 @@ class PatrowlEngine:
         res = {"page": "clean"}
         # Terminate processes
         for scan_id in self.scans.keys():
-            thread = self.scans[scan_id]["thread"]
-            if "proc" in thread and hasattr(thread["proc"], "pid"):
-                if psutil.pid_exists(thread["proc"].pid):
-                    psutil.Process(thread["proc"].pid).terminate()
+            for thread_id in self.scans[scan_id]["threads"]:
+                thread = self.scans[scan_id]["threads"][thread_id]
+                if "proc" in thread and hasattr(thread["proc"], "pid"):
+                    if psutil.pid_exists(thread["proc"].pid):
+                        psutil.Process(thread["proc"].pid).terminate()
         # Remove scans from memory
         self.scans.clear()
         # Update scanner status
@@ -283,7 +284,11 @@ class PatrowlEngine:
 
         return jsonify({"status": self.scans[scan_id]["status"]})
 
-    def get_status(self):
+    def get_full_status(self):
+        """Return engine status with all assets on scans."""
+        return self.get_status(True)
+
+    def get_status(self, full_status=False):
         """Get the status of the engine and all its scans."""
         res = {"page": "status"}
         self.scanner["status"] = "READY"
@@ -304,12 +309,14 @@ class PatrowlEngine:
                             "status": self.scans[scan]["status"],
                             "options": self.scans[scan]["options"],
                             "nb_findings": self.scans[scan]["nb_findings"],
-                            "assets": self.scans[scan]["assets"],
+                            "nb_assets": len(self.scans[scan]["assets"]),
                             "position": self.scans[scan]["position"],
                             "root_scan_id": self.scans[scan]["root_scan_id"],
                         }
                     }
                 )
+                if full_status:
+                    scans[scan].update({"assets": self.scans[scan]["assets"]})
             except Exception:
                 pass
         res.update({"scans": scans})
@@ -328,11 +335,18 @@ class PatrowlEngine:
 
     def status_scan(self, scan_id):
         """Get status on scan identified by id."""
-        res = {"page": "status_scan", "status": "UNKNOWN"}
+        res = {
+            "page": "status_scan",
+            "status": "UNKNOWN",
+            "assets": [],
+            "position": None,
+            "root_scan_id": None,
+        }
         info_thread_in_progress = []
         if scan_id not in self.scans.keys():
             res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
             return jsonify(res)
+        res.update({"scan_id": scan_id})
 
         if self.scans[scan_id]["status"] == "ERROR":
             res.update({"status": "error", "reason": "Something wrong happened"})
@@ -349,53 +363,59 @@ class PatrowlEngine:
         if "root_scan_id" in self.scans[scan_id]:
             res.update({"root_scan_id": self.scans[scan_id]["root_scan_id"]})
 
-        thread = self.scans[scan_id]["thread"]
-        if "status" in thread and thread["status"] == "STARTED":
-            res.update({"status": "SCANNING"})
-            return jsonify(res)
-        elif "proc" not in thread:
-            res.update(
-                {"status": "error", "reason": "Process for this scan not found."}
-            )
-            return jsonify(res)
+        for thread_id in self.scans[scan_id]["threads"]:
+            thread = self.scans[scan_id]["threads"][thread_id]
+            if "status" in thread:
+                if thread["status"] == "STARTED":
+                    res.update({"status": "SCANNING"})
+                    return jsonify(res)
+                elif thread["status"] == "FINISHED":
+                    res.update({"status": "FINISHED"})
+                    return jsonify(res)
+            elif "proc" not in thread:
+                res.update(
+                    {"status": "error", "reason": "Process for this scan not found."}
+                )
+                return jsonify(res)
 
-        if not psutil.pid_exists(thread["proc"].pid):
-            thread["status"] = "FINISHED"
+            if not psutil.pid_exists(thread["proc"].pid):
+                thread["status"] = "FINISHED"
 
-        elif psutil.pid_exists(thread["proc"].pid) and psutil.Process(
-            thread["proc"].pid
-        ).status() in ["sleeping", "running"]:
-            thread["status"] = "SCANNING"
-            info = {
-                "thread_id": thread["thread_id"],
-                "cmd": thread["cmd"],
-                "pid": thread["proc"].pid,
-            }
-            info_thread_in_progress.append(info)
+            elif psutil.pid_exists(thread["proc"].pid) and psutil.Process(
+                thread["proc"].pid
+            ).status() in ["sleeping", "running"]:
+                thread["status"] = "SCANNING"
+                info = {
+                    "thread_id": thread["thread_id"],
+                    "cmd": thread["cmd"],
+                    "pid": thread["proc"].pid,
+                }
+                info_thread_in_progress.append(info)
 
-        elif (
-            psutil.pid_exists(thread["proc"].pid)
-            and psutil.Process(thread["proc"].pid).status() == "zombie"
-        ):
-            thread["status"] = "FINISHED"
-            psutil.Process(thread["proc"].pid).terminate()
+            elif (
+                psutil.pid_exists(thread["proc"].pid)
+                and psutil.Process(thread["proc"].pid).status() == "zombie"
+            ):
+                thread["status"] = "FINISHED"
+                psutil.Process(thread["proc"].pid).terminate()
 
-        # Debug in case of status pf disk-sleep
-        else:
-            # print(psutil.Process(thread['proc'].pid).status())
-            thread["status"] = "SCANNING"
+            # Debug in case of status pf disk-sleep
+            else:
+                # print(psutil.Process(thread['proc'].pid).status())
+                thread["status"] = "SCANNING"
 
-        thread = self.scans[scan_id]["thread"]
-        # if one thread is not finished, global scan is not finished
-        if thread["status"] == "SCANNING":
-            self.scans[scan_id]["status"] = "SCANNING"
-            res.update(
-                {"status": "SCANNING", "info": [t for t in info_thread_in_progress]}
-            )
-            return jsonify(res)
-        else:
-            self.scans[scan_id]["status"] = "FINISHED"
-            res.update({"status": "FINISHED"})
+        for thread_id in self.scans[scan_id]["threads"]:
+            thread = self.scans[scan_id]["threads"][thread_id]
+            # if one thread is not finished, global scan is not finished
+            if thread["status"] == "SCANNING":
+                self.scans[scan_id]["status"] = "SCANNING"
+                res.update(
+                    {"status": "SCANNING", "info": [t for t in info_thread_in_progress]}
+                )
+                return jsonify(res)
+            else:
+                self.scans[scan_id]["status"] = "FINISHED"
+                res.update({"status": "FINISHED"})
         return jsonify(res)
 
     def info(self):
@@ -419,7 +439,7 @@ class PatrowlEngine:
     def stop_scan(self, scan_id):
         """Stop a scan identified by his 'id'."""
         res = {"page": "stop_scan"}
-
+        pids = ""
         if scan_id not in self.scans.keys():
             raise PatrowlEngineExceptions(
                 1002, "scan_id '{}' not found".format(scan_id)
@@ -437,15 +457,19 @@ class PatrowlEngine:
                 }
             )
             return jsonify(res)
+        for thread_id in self.scans[scan_id]["threads"]:
+            thread = self.scans[scan_id][thread_id]
+            if hasattr(thread["proc"], "pid"):
+                if psutil.pid_exists(thread["proc"].pid):
+                    psutil.Process(thread["proc"].pid).terminate()
+                    pids += " " + str(thread["proc"].pid)
 
-        thread = self.scans[scan_id]["thread"]
-        if hasattr(thread["proc"], "pid"):
-            if psutil.pid_exists(thread["proc"].pid):
-                psutil.Process(thread["proc"].pid).terminate()
-                pids += " " + str(thread["proc"].pid)
-
-        # Stop scan thread
-        thread["thread"].join()
+            # Stop scan
+            try:
+                thread.join()
+                self.scans[scan_id]["threads"].pop(thread_id)
+            except Exception:
+                pass
 
         self.scans[scan_id]["status"] = "STOPPED"
         self.scans[scan_id]["finished_at"] = int(time.time() * 1000)
@@ -478,11 +502,14 @@ class PatrowlEngine:
             return res
 
         self.get_status()
-        if self.status != "READY":
+        if self.scanner["status"] != "READY":
             res.update(
                 {
                     "status": "ERROR",
-                    "details": {"reason": "scanner not ready", "status": self.status},
+                    "details": {
+                        "reason": "scanner not ready",
+                        "status": self.scanner["status"],
+                    },
                 }
             )
             return res
@@ -557,7 +584,9 @@ class PatrowlEngine:
         if self.scans[scan_id]["status"] != "FINISHED":
             raise PatrowlEngineExceptions(
                 1003,
-                "scan_id '{}' not finished (status={})".format(scan_id, scan["status"]),
+                "scan_id '{}' not finished (status={})".format(
+                    scan_id, self.scans[scan_id]["status"]
+                ),
             )
 
         issues = []
