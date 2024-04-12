@@ -48,6 +48,7 @@ class PatrowlEngine:
         self.scans = {}
         self.max_scans = max_scans
         self.status = "INIT"
+        self.metadata = {}
 
     def __str__(self):
         """Return a string-formated object."""
@@ -242,8 +243,17 @@ class PatrowlEngine:
                 1002, "scan_id '{}' not found".format(scan_id)
             )
 
+        # Terminate thread if any
+        for thread_id in self.scans[scan_id]["threads"]:
+            try:
+                thread = self.scans[scan_id][thread_id]
+                thread.join()
+                self.scans[scan_id]["threads"].remove(thread)
+            except Exception as e:
+                print(e)
+                pass
+
         self.scans.pop(scan_id)
-        # Todo: force terminating all threads
         res.update({"status": "removed"})
         return jsonify(res)
 
@@ -365,14 +375,7 @@ class PatrowlEngine:
 
         for thread_id in self.scans[scan_id]["threads"]:
             thread = self.scans[scan_id]["threads"][thread_id]
-            if "status" in thread:
-                if thread["status"] == "STARTED":
-                    res.update({"status": "SCANNING"})
-                    return jsonify(res)
-                elif thread["status"] == "FINISHED":
-                    res.update({"status": "FINISHED"})
-                    return jsonify(res)
-            elif "proc" not in thread:
+            if "proc" not in thread:
                 res.update(
                     {"status": "error", "reason": "Process for this scan not found."}
                 )
@@ -380,7 +383,6 @@ class PatrowlEngine:
 
             if not psutil.pid_exists(thread["proc"].pid):
                 thread["status"] = "FINISHED"
-
             elif psutil.pid_exists(thread["proc"].pid) and psutil.Process(
                 thread["proc"].pid
             ).status() in ["sleeping", "running"]:
@@ -407,7 +409,7 @@ class PatrowlEngine:
         for thread_id in self.scans[scan_id]["threads"]:
             thread = self.scans[scan_id]["threads"][thread_id]
             # if one thread is not finished, global scan is not finished
-            if thread["status"] == "SCANNING":
+            if thread["status"] in ["SCANNING", "STARTED", "RUNNING"]:
                 self.scans[scan_id]["status"] = "SCANNING"
                 res.update(
                     {"status": "SCANNING", "info": [t for t in info_thread_in_progress]}
@@ -422,11 +424,12 @@ class PatrowlEngine:
         """Return the info page."""
         scans = {}
         for scan in self.scans.keys():
-            self.status_scan(scan)
+            # self.status_scan(scan)
             scans.update(
                 {
                     scan: {
                         "status": self.scans[scan]["status"],
+                        "nb_assets": len(self.scans[scan]["assets"]),
                         "options": self.scans[scan]["options"],
                         "nb_findings": self.scans[scan]["nb_findings"],
                     }
