@@ -3,7 +3,7 @@
 
 import os
 
-import datetime
+from datetime import datetime, date, timezone
 from flask import jsonify, url_for, redirect, send_file
 import json
 import optparse
@@ -11,8 +11,10 @@ import psutil
 import shutil
 import urllib
 import ssl
+import socket
 import time
 from uuid import UUID
+
 from .PatrowlEngineExceptions import PatrowlEngineExceptions
 
 APP_HOST = "127.0.0.1"
@@ -23,7 +25,7 @@ APP_MAXSCANS = 25
 
 def _json_serial(obj):
     """JSON serializer for objects not serializable by default json code."""
-    if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
+    if isinstance(obj, datetime) or isinstance(obj, date):
         return obj.isoformat()
     if isinstance(obj, UUID):
         # if the obj is uuid, we simply return the value of uuid
@@ -287,10 +289,15 @@ class PatrowlEngine:
             if self.scans[scan_id]["status"] == "SCANNING":
                 # all threads are finished, ensure scan status is no more SCANNING
                 self.scans[scan_id]["status"] = "FINISHED"
+                self.scans[scan_id]["finished_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
 
             if "finished_at" not in self.scans[scan_id].keys():
                 # update finished time if not already set
-                self.scans[scan_id]["finished_at"] = int(time.time() * 1000)
+                self.scans[scan_id]["finished_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
 
         return jsonify({"status": self.scans[scan_id]["status"]})
 
@@ -304,29 +311,32 @@ class PatrowlEngine:
         self.scanner["status"] = "READY"
         status_code = 200
 
-        # display info on the scanner
-        res.update({"scanner": self.scanner})
+        # display host + info on the scanner
+        res.update({"scanner": self.scanner, "hostname": socket.gethostname()})
 
         # display the status of scans performed
         scans = {}
         all_scans = list(self.scans.keys()).copy()
+
         for scan in all_scans:
             try:
-                self.status_scan(scan)
+                data = self.status_scan(scan).json
                 scans.update(
                     {
                         scan: {
-                            "status": self.scans[scan]["status"],
-                            "options": self.scans[scan]["options"],
-                            "nb_findings": self.scans[scan]["nb_findings"],
-                            "nb_assets": len(self.scans[scan]["assets"]),
-                            "position": self.scans[scan]["position"],
-                            "root_scan_id": self.scans[scan]["root_scan_id"],
+                            "status": data["status"],
+                            "options": data["options"],
+                            "nb_findings": data["nb_findings"],
+                            "nb_assets": len(data["assets"]),
+                            "position": data["position"],
+                            "root_scan_id": data["root_scan_id"],
+                            "created_at": data["created_at"],
+                            "finished_at": data["finished_at"],
                         }
                     }
                 )
                 if full_status:
-                    scans[scan].update({"assets": self.scans[scan]["assets"]})
+                    scans[scan].update({"assets": data["assets"]})
             except Exception:
                 pass
         res.update({"scans": scans})
@@ -343,14 +353,18 @@ class PatrowlEngine:
             status_code = 500
         return jsonify(res), status_code
 
-    def status_scan(self, scan_id):
+    def _get_attr(self, data: dict, value: str, return_value=None):
+        if value in data:
+            return data[value]
+        return return_value
+
+    def status_scan(self, scan_id: int):
         """Get status on scan identified by id."""
         res = {
             "page": "status_scan",
+            "hostname": socket.gethostname(),
             "status": "UNKNOWN",
             "assets": [],
-            "position": None,
-            "root_scan_id": None,
         }
         info_thread_in_progress = []
         if scan_id not in self.scans.keys():
@@ -366,12 +380,18 @@ class PatrowlEngine:
         if self.scans[scan_id]["status"] == "STARTED":
             res.update({"status": "SCANNING"})
 
-        if "assets" in self.scans[scan_id]:
-            res.update({"assets": self.scans[scan_id]["assets"]})
-        if "position" in self.scans[scan_id]:
-            res.update({"position": self.scans[scan_id]["position"]})
-        if "root_scan_id" in self.scans[scan_id]:
-            res.update({"root_scan_id": self.scans[scan_id]["root_scan_id"]})
+        res.update(
+            {
+                "options": self._get_attr(self.scans[scan_id], "options", {}),
+                "nb_findings": self._get_attr(self.scans[scan_id], "nb_findings"),
+                "nb_assets": len(self._get_attr(self.scans[scan_id], "assets", [])),
+                "assets": self._get_attr(self.scans[scan_id], "assets", []),
+                "position": self._get_attr(self.scans[scan_id], "position", 0),
+                "root_scan_id": self._get_attr(self.scans[scan_id], "root_scan_id", 0),
+                "created_at": self._get_attr(self.scans[scan_id], "created_at"),
+                "finished_at": self._get_attr(self.scans[scan_id], "finished_at"),
+            }
+        )
 
         for thread_id in self.scans[scan_id]["threads"]:
             thread = self.scans[scan_id]["threads"][thread_id]
@@ -417,6 +437,9 @@ class PatrowlEngine:
                 return jsonify(res)
             else:
                 self.scans[scan_id]["status"] = "FINISHED"
+                self.scans[scan_id]["finished_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
                 res.update({"status": "FINISHED"})
         return jsonify(res)
 
@@ -436,7 +459,12 @@ class PatrowlEngine:
                 }
             )
 
-        res = {"page": "info", "engine_config": self.scanner, "scans": scans}
+        res = {
+            "page": "info",
+            "hostname": socket.gethostname(),
+            "engine_config": self.scanner,
+            "scans": scans,
+        }
         return jsonify(res), 200
 
     def stop_scan(self, scan_id):
@@ -475,7 +503,7 @@ class PatrowlEngine:
                 pass
 
         self.scans[scan_id]["status"] = "STOPPED"
-        self.scans[scan_id]["finished_at"] = int(time.time() * 1000)
+        self.scans[scan_id]["finished_at"] = datetime.now(timezone.utc).isoformat()
 
         res.update({"status": "success", "details": {"pid": pids, "scan_id": scan_id}})
         return jsonify(res), 200
