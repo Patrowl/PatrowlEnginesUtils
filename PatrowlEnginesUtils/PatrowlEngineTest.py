@@ -97,28 +97,29 @@ class PatrowlEngineTest:
         finally:
             return r.json()
 
-    def custom_test(self, test_name, assets, scan_policy=None, is_valid=True,
-                    max_timeout=1200, scan_id=random.randint(1000000, 1999999)):
+    def custom_test(
+        self,
+        test_name,
+        assets,
+        scan_policy=None,
+        is_valid=True,
+        max_timeout=1200,
+        scan_id=random.randint(1000000, 1999999),
+    ):
         """Start a custom test."""
         print("test-{}-custom: {}".format(self.engine_name, test_name))
         if scan_policy is None:
             scan_policy = {}
-        post_data = {
-            "assets":  assets,
-            "options": scan_policy,
-            "scan_id": str(scan_id)
-        }
+        post_data = {"assets": assets, "options": scan_policy, "scan_id": str(scan_id)}
 
         r = requests.post(
             url="{}/startscan".format(self.base_url),
             data=json.dumps(post_data),
-            headers={
-                'Content-type': 'application/json',
-                'Accept': 'application/json'
-                })
+            headers={"Content-type": "application/json", "Accept": "application/json"},
+        )
         try:
             assert r.status_code == 200
-            assert r.json()['status'] == "accepted"
+            assert r.json()["status"] == "accepted"
         except AssertionError:
             print(r.json())
             assert False
@@ -129,12 +130,15 @@ class PatrowlEngineTest:
         retries = 0
         has_error = False
         while time.time() < timeout_start + max_timeout:
-            r = requests.get(
-                url="{}/status/{}".format(self.base_url, scan_id))
+            r = requests.get(url="{}/status/{}".format(self.base_url, scan_id))
             if r.json()["status"] in ("SCANNING", "STARTED"):
                 time.sleep(3)
-            elif (r.json()["status"] == "ERROR" and "reason" in r.json() and
-                  r.json()["reason"] == "No PID found" and retries < 3):
+            elif (
+                r.json()["status"] == "ERROR"
+                and "reason" in r.json()
+                and r.json()["reason"] == "No PID found"
+                and retries < 3
+            ):
                 retries += 1
                 time.sleep(3)
             else:
@@ -148,18 +152,16 @@ class PatrowlEngineTest:
         # Get findings
         if not has_error:
             findings = {}
-            r = requests.get(
-                url="{}/getfindings/{}".format(self.base_url, scan_id))
+            r = requests.get(url="{}/getfindings/{}".format(self.base_url, scan_id))
             try:
-                assert r.json()['status'] == "success"
+                assert r.json()["status"] == "success"
                 findings = r.json()
             except AssertionError:
                 print(r.json())
                 assert False
 
             # Get report
-            r = requests.get(
-                url="{}/getreport/{}".format(self.base_url, scan_id))
+            r = requests.get(url="{}/getreport/{}".format(self.base_url, scan_id))
             try:
                 # check the file name & siza !!
                 assert True
