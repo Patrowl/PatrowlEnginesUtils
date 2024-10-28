@@ -268,7 +268,7 @@ class PatrowlEngine:
             # TODO rewrite function later
             if self.scans[scan_id]["status"] in ["SCANNING", "STARTED"]:
                 scans_count += 1
-            if scans_count >= APP_MAXSCANS:
+            if scans_count >= self.max_scans:
                 return True
         return False
 
