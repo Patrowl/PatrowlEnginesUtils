@@ -218,8 +218,8 @@ class PatrowlEngine:
 
         return context
 
-    def clean(self, scan_id):
-        """Clean all the scans."""
+    def clean(self) -> tuple[dict, int]:
+        """Clean all scans."""
         res = {"page": "clean"}
         # Terminate processes
         for scan_id in self.scans.keys():
@@ -235,7 +235,7 @@ class PatrowlEngine:
         res.update({"status": "success"})
         return jsonify(res), 200
 
-    def clean_scan(self, scan_id):
+    def clean_scan(self, scan_id: int) -> tuple[dict, int]:
         """Clean a scan identified by his 'id'."""
         res = {"page": "clean_scan"}
         res.update({"scan_id": scan_id})
@@ -257,7 +257,7 @@ class PatrowlEngine:
 
         self.scans.pop(scan_id)
         res.update({"status": "removed"})
-        return jsonify(res)
+        return jsonify(res), 200
 
     def _engine_is_busy(self):
         """Returns if engine is busy scanning."""
