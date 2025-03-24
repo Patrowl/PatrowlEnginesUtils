@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """This file manages PatrowlEngine and its common features."""
 
-import os
-
-from datetime import datetime, date, timezone
-from flask import jsonify, url_for, redirect, send_file
 import json
 import optparse
-import psutil
+import os
 import shutil
-import urllib
-import ssl
 import socket
+import ssl
 import time
+import urllib
+from datetime import date, datetime, timezone
 from uuid import UUID
+
+import psutil
+from flask import jsonify, redirect, send_file, url_for
 
 from .PatrowlEngineExceptions import PatrowlEngineExceptions
 
@@ -260,16 +260,30 @@ class PatrowlEngine:
         return jsonify(res), 200
 
     def _engine_is_busy(self):
-        """Returns if engine is busy scanning."""
+        """Returns True if any scan is actively running and its process is not a zombie."""
         scans_count = 0
-        # for scan_id, scan_infos in this.scans:
-        for scan_id in self.scans.keys():
-            # do not use scan_status as it updates all scans
-            # TODO rewrite function later
-            if self.scans[scan_id]["status"] in ["SCANNING", "STARTED"]:
-                scans_count += 1
-            if scans_count >= self.max_scans:
-                return True
+
+        for scan_data in self.scans.values():
+            if scan_data.get("status") not in ["SCANNING", "STARTED"]:
+                continue  # Skip if the scan is not in a running state
+
+            for thread_data in scan_data.get("threads", {}).values():
+                proc = thread_data.get("proc")
+                if proc and psutil.pid_exists(proc.pid):
+                    try:
+                        process = psutil.Process(proc.pid)
+                        if process.status() in [
+                            psutil.STATUS_RUNNING,
+                            psutil.STATUS_SLEEPING,
+                            psutil.STATUS_IDLE,
+                        ]:
+                            scans_count += 1
+                    except psutil.NoSuchProcess:
+                        continue  # Process has ended, ignore it
+
+                if scans_count >= self.max_scans:
+                    return True
+
         return False
 
     def getstatus_scan(self, scan_id):  # DEPRECATED
