@@ -272,14 +272,15 @@ class PatrowlEngine:
                 if proc and psutil.pid_exists(proc.pid):
                     try:
                         process = psutil.Process(proc.pid)
-                        if process.status() in [
-                            psutil.STATUS_RUNNING,
-                            psutil.STATUS_SLEEPING,
-                            psutil.STATUS_IDLE,
-                        ]:
-                            scans_count += 1
                     except psutil.NoSuchProcess:
                         continue  # Process has ended, ignore it
+                    else:
+	                    if process.status() in [
+	                            psutil.STATUS_RUNNING,
+	                            psutil.STATUS_SLEEPING,
+	                            psutil.STATUS_IDLE,
+	                        ]:
+	                            scans_count += 1
 
                 if scans_count >= self.max_scans:
                     return True
