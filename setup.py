@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='PatrowlEnginesUtils',
-    version='1.2.2',
+    version='1.2.3',
     description='Common classes for PatrowlEngines',
     url='https://github.com/Patrowl/PatrowlEnginesUtils',
     author='Nicolas Mattiocco',
